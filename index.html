@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tarefas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .task-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 500px;
+            text-align: center;
+        }
+
+        .input-folder {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .input-folder input[type="text"] {
+            width: 200px;
+            padding: 12px;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+
+        .input-folder button,
+        .input-container button {
+            padding: 12px 25px;
+            background-color: #b3e5fc;
+            color: #333;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .input-folder button:hover,
+        .input-container button:hover {
+            background-color: #81d4fa;
+        }
+
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            background-color: #b3e5fc;
+            color: #333;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .tab.active {
+            background-color: #81d4fa;
+        }
+
+        .input-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .input-container input[type="text"] {
+            width: 300px;
+            padding: 12px;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .task-item input[type="checkbox"] {
+            margin-right: 10px;
+            accent-color: #81d4fa;
+        }
+
+        .task-item.completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="task-container">
+        <h1>Lista de Tarefas</h1>
+
+        <div class="input-folder">
+            <input type="text" id="folderName" placeholder="Nome da pasta">
+            <button onclick="createFolder()">Criar Pasta</button>
+        </div>
+
+        <div class="tab-container" id="tabs"></div>
+
+        <div class="input-container">
+            <input type="text" id="taskInput" placeholder="Digite uma tarefa..." />
+            <button onclick="addTask()">Adicionar</button>
+        </div>
+
+        <div id="taskList"></div>
+    </div>
+
+    <script>
+      let currentList = 'taskList';
+      let folders = JSON.parse(localStorage.getItem('folders')) || {};
+
+      document.getElementById('folderName').addEventListener('keydown', function(event) {
+          if (event.key === 'Enter') {
+              createFolder();
+          }
+      });
+
+      document.getElementById('taskInput').addEventListener('keydown', function(event) {
+          if (event.key === 'Enter') {
+              addTask();
+          }
+      });
+
+      function createFolder() {
+          const folderName = document.getElementById('folderName').value.trim();
+          if (folderName) {
+              if (!folders[folderName]) {
+                  folders[folderName] = [];
+                  const tab = document.createElement('button');
+                  tab.classList.add('tab');
+                  tab.textContent = folderName;
+                  tab.onclick = () => changeList(folderName);
+                  document.getElementById('tabs').appendChild(tab);
+                  document.getElementById('folderName').value = '';
+                  if (Object.keys(folders).length === 1) {
+                      changeList(folderName);
+                  }
+                  saveData();
+              } else {
+                  alert('Pasta já existe!');
+              }
+          }
+      }
+
+      function addTask() {
+          const taskInput = document.getElementById('taskInput');
+          const taskText = taskInput.value.trim();
+
+          if (taskText !== '') {
+              const taskList = document.getElementById('taskList');
+              const taskItem = document.createElement('div');
+              taskItem.classList.add('task-item');
+
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.onclick = () => toggleTaskStatus(checkbox);
+
+              const label = document.createElement('label');
+              label.textContent = taskText;
+
+              taskItem.appendChild(checkbox);
+              taskItem.appendChild(label);
+
+              if (currentList === 'taskList') {
+                  taskList.appendChild(taskItem);
+              } else {
+                  folders[currentList].push({ text: taskText, completed: false });
+                  updateFolderList();
+              }
+
+              taskInput.value = '';
+              saveData();
+          }
+      }
+
+      function toggleTaskStatus(checkbox) { //aqui ele atualiza o status das tarefas 
+          const taskItem = checkbox.parentElement;
+          if (checkbox.checked) {
+              taskItem.classList.add('completed');
+              if (currentList !== 'taskList') {
+                  const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
+                  folders[currentList][taskIndex].completed = true;
+              }
+          } else {
+              taskItem.classList.remove('completed');
+              if (currentList !== 'taskList') {
+                  const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
+                  folders[currentList][taskIndex].completed = false;
+              }
+          }
+          saveData();
+      }
+
+      function changeList(listName) {
+          document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+          document.querySelectorAll('.tab').forEach(tab => {
+              if (tab.textContent === listName) {
+                  tab.classList.add('active');
+              }
+          });
+
+          currentList = listName;
+          updateFolderList();
+      }
+
+      function updateFolderList() {
+          const taskList = document.getElementById('taskList');
+          taskList.innerHTML = '';
+          if (currentList !== 'taskList') {
+              folders[currentList].forEach(task => {
+                  const taskItem = document.createElement('div');
+                  taskItem.classList.add('task-item');
+
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.checked = task.completed;
+                  checkbox.onclick = () => toggleTaskStatus(checkbox);
+
+                  const label = document.createElement('label');
+                  label.textContent = task.text;
+
+                  taskItem.appendChild(checkbox);
+                  taskItem.appendChild(label);
+
+                  if (task.completed) {
+                      taskItem.classList.add('completed');
+                  }
+
+                  taskList.appendChild(taskItem);
+              });
+          }
+      }
+
+      function saveData() { 
+          localStorage.setItem('folders', JSON.stringify(folders));
+      }
+
+      // Carrega os dados das pastas ao carregar a página
+      window.onload = function() { // aqui ele carrega as coisas quando carregar a página
+          for (const folderName in folders) {
+              const tab = document.createElement('button');
+              tab.classList.add('tab');
+              tab.textContent = folderName;
+              tab.onclick = () => changeList(folderName);
+              document.getElementById('tabs').appendChild(tab);
+          }
+          if (Object.keys(folders).length > 0) {
+              changeList(Object.keys(folders)[0]);
+          }
+      };
+  </script>
+</body>
+</html>
