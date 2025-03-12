@@ -11,9 +11,8 @@
             margin: 0;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
             color: #333;
+            min-height: 100vh;
         }
 
         .task-container {
@@ -23,20 +22,27 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             width: 500px;
             text-align: center;
+            margin-top: 20px;
+            max-width: 90%;
+            overflow-x: auto;
         }
 
-        .input-folder {
+        .input-folder,
+        .input-container {
             display: flex;
             justify-content: center;
+            align-items: center;
             margin-bottom: 20px;
         }
 
-        .input-folder input[type="text"] {
+        .input-folder input[type="text"],
+        .input-container input[type="text"] {
             width: 200px;
             padding: 12px;
             border-radius: 25px;
             border: 1px solid #ccc;
             margin-right: 10px;
+            text-align: left;
         }
 
         .input-folder button,
@@ -59,6 +65,7 @@
             display: flex;
             justify-content: center;
             margin-bottom: 30px;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -68,18 +75,13 @@
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            margin-right: 10px;
+            margin: 5px;
             font-size: 16px;
         }
 
-        .tab.active {
-            background-color: #81d4fa;
-        }
-
-        .input-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
+        .tab.selected {
+            background-color: #64b5f6;
+            color: #fff;
         }
 
         .input-container input[type="text"] {
@@ -88,11 +90,13 @@
             border-radius: 25px;
             border: 1px solid #ccc;
             margin-right: 10px;
+            text-align: left;
         }
 
         .task-item {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 15px;
             text-align: left;
         }
@@ -105,6 +109,44 @@
         .task-item.completed {
             text-decoration: line-through;
             color: #888;
+        }
+
+        .delete-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #f44336;
+            font-size: 18px;
+        }
+
+        .delete-folder-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #333;
+            font-size: 16px;
+            display: block;
+            margin: 10px auto 0;
+        }
+
+        .folder-container {
+            text-align: center;
+            margin: 5px;
+        }
+
+        .delete-all-button {
+            padding: 12px 25px;
+            background-color: #f44336;
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .delete-all-button:hover {
+            background-color: #d32f2f;
         }
     </style>
 </head>
@@ -125,151 +167,219 @@
         </div>
 
         <div id="taskList"></div>
+
+        <button class="delete-all-button" onclick="deleteAll()">Deletar Tudo</button>
     </div>
 
     <script>
-      let currentList = 'taskList';
-      let folders = JSON.parse(localStorage.getItem('folders')) || {};
+        let currentList = 'taskList';
+        let folders = JSON.parse(localStorage.getItem('folders')) || {};
 
-      document.getElementById('folderName').addEventListener('keydown', function(event) {
-          if (event.key === 'Enter') {
-              createFolder();
-          }
-      });
+        document.getElementById('folderName').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                createFolder();
+            }
+        });
 
-      document.getElementById('taskInput').addEventListener('keydown', function(event) {
-          if (event.key === 'Enter') {
-              addTask();
-          }
-      });
+        document.getElementById('taskInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                addTask();
+            }
+        });
 
-      function createFolder() {
-          const folderName = document.getElementById('folderName').value.trim();
-          if (folderName) {
-              if (!folders[folderName]) {
-                  folders[folderName] = [];
-                  const tab = document.createElement('button');
-                  tab.classList.add('tab');
-                  tab.textContent = folderName;
-                  tab.onclick = () => changeList(folderName);
-                  document.getElementById('tabs').appendChild(tab);
-                  document.getElementById('folderName').value = '';
-                  if (Object.keys(folders).length === 1) {
-                      changeList(folderName);
-                  }
-                  saveData();
-              } else {
-                  alert('Pasta já existe!');
-              }
-          }
-      }
+        function createFolder() {
+            const folderName = document.getElementById('folderName').value.trim();
+            if (folderName) {
+                if (!folders[folderName]) {
+                    folders[folderName] = [];
+                    const folderContainer = document.createElement('div');
+                    folderContainer.classList.add('folder-container');
 
-      function addTask() {
-          const taskInput = document.getElementById('taskInput');
-          const taskText = taskInput.value.trim();
+                    const tab = document.createElement('button');
+                    tab.classList.add('tab');
+                    tab.textContent = folderName;
+                    tab.onclick = () => changeList(folderName);
+                    folderContainer.appendChild(tab);
 
-          if (taskText !== '') {
-              const taskList = document.getElementById('taskList');
-              const taskItem = document.createElement('div');
-              taskItem.classList.add('task-item');
+                    const deleteFolderButton = document.createElement('button');
+                    deleteFolderButton.classList.add('delete-folder-button');
+                    deleteFolderButton.innerHTML = '&#128465;';
+                    deleteFolderButton.onclick = (event) => {
+                        event.stopPropagation();
+                        deleteFolder(folderName);
+                    };
+                    folderContainer.appendChild(deleteFolderButton);
 
-              const checkbox = document.createElement('input');
-              checkbox.type = 'checkbox';
-              checkbox.onclick = () => toggleTaskStatus(checkbox);
+                    document.getElementById('tabs').appendChild(folderContainer);
+                    document.getElementById('folderName').value = '';
+                    if (Object.keys(folders).length === 1) {
+                        changeList(folderName);
+                    }
+                    saveData();
+                } else {
+                    alert('Pasta já existe!');
+                }
+            }
+        }
 
-              const label = document.createElement('label');
-              label.textContent = taskText;
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const taskText = taskInput.value.trim();
 
-              taskItem.appendChild(checkbox);
-              taskItem.appendChild(label);
+            if (taskText !== '') {
+                if (currentList === 'taskList') {
+                    createTaskItem(taskText);
+                } else {
+                    folders[currentList].push({ text: taskText, completed: false });
+                    updateFolderList();
+                }
+                taskInput.value = '';
+                saveData();
+            }
+        }
 
-              if (currentList === 'taskList') {
-                  taskList.appendChild(taskItem);
-              } else {
-                  folders[currentList].push({ text: taskText, completed: false });
-                  updateFolderList();
-              }
+        function createTaskItem(taskText, completed = false) {
+            const taskList = document.getElementById('taskList');
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
 
-              taskInput.value = '';
-              saveData();
-          }
-      }
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = completed;
+            checkbox.onclick = () => toggleTaskStatus(checkbox);
 
-      function toggleTaskStatus(checkbox) { //aqui ele atualiza o status das tarefas 
-          const taskItem = checkbox.parentElement;
-          if (checkbox.checked) {
-              taskItem.classList.add('completed');
-              if (currentList !== 'taskList') {
-                  const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
-                  folders[currentList][taskIndex].completed = true;
-              }
-          } else {
-              taskItem.classList.remove('completed');
-              if (currentList !== 'taskList') {
-                  const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
-                  folders[currentList][taskIndex].completed = false;
-              }
-          }
-          saveData();
-      }
+            const label = document.createElement('label');
+            label.textContent = taskText;
 
-      function changeList(listName) {
-          document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-          document.querySelectorAll('.tab').forEach(tab => {
-              if (tab.textContent === listName) {
-                  tab.classList.add('active');
-              }
-          });
+            const deleteButton = document.createElement('button');
+            deleteButton.classList.add('delete-button');
+            deleteButton.innerHTML = '&#128465;';
+            deleteButton.onclick = () => deleteTask(taskItem);
 
-          currentList = listName;
-          updateFolderList();
-      }
+            taskItem.appendChild(checkbox);
+            taskItem.appendChild(label);
+            taskItem.appendChild(deleteButton);
+            if (completed) {
+            taskItem.classList.add('completed');
+        }
 
-      function updateFolderList() {
-          const taskList = document.getElementById('taskList');
-          taskList.innerHTML = '';
-          if (currentList !== 'taskList') {
-              folders[currentList].forEach(task => {
-                  const taskItem = document.createElement('div');
-                  taskItem.classList.add('task-item');
+        taskList.appendChild(taskItem);
+    }
 
-                  const checkbox = document.createElement('input');
-                  checkbox.type = 'checkbox';
-                  checkbox.checked = task.completed;
-                  checkbox.onclick = () => toggleTaskStatus(checkbox);
+    function toggleTaskStatus(checkbox) {
+        const taskItem = checkbox.parentElement;
+        if (checkbox.checked) {
+            taskItem.classList.add('completed');
+            if (currentList !== 'taskList') {
+                const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
+                folders[currentList][taskIndex].completed = true;
+            }
+        } else {
+            taskItem.classList.remove('completed');
+            if (currentList !== 'taskList') {
+                const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
+                folders[currentList][taskIndex].completed = false;
+            }
+        }
+        saveData();
+    }
 
-                  const label = document.createElement('label');
-                  label.textContent = task.text;
+    function deleteTask(taskItem) {
+        if (currentList === 'taskList') {
+            taskItem.remove();
+        } else {
+            const taskIndex = Array.from(taskItem.parentElement.children).indexOf(taskItem);
+            folders[currentList].splice(taskIndex, 1);
+            updateFolderList();
+        }
+        saveData();
+    }
 
-                  taskItem.appendChild(checkbox);
-                  taskItem.appendChild(label);
+    function deleteFolder(folderName) {
+        if (confirm(`Deseja excluir a pasta "${folderName}" e todas as suas tarefas?`)) {
+            delete folders[folderName];
+            saveData();
+            updateFolderList();
+            window.onload();
+        }
+    }
 
-                  if (task.completed) {
-                      taskItem.classList.add('completed');
-                  }
+    function changeList(listName) {
+        currentList = listName;
+        updateFolderList();
 
-                  taskList.appendChild(taskItem);
-              });
-          }
-      }
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('selected');
+            if (tab.textContent === listName) {
+                tab.classList.add('selected');
+            }
+        });
+    }
 
-      function saveData() { 
-          localStorage.setItem('folders', JSON.stringify(folders));
-      }
+    function updateFolderList() {
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
+        if (currentList !== 'taskList') {
+            folders[currentList].forEach((task, index) => {
+                createTaskItem(task.text, task.completed);
+            });
+        } else {
+            for (let i = 0; i < folders['taskList'].length; i++) {
+                createTaskItem(folders['taskList'][i].text, folders['taskList'][i].completed);
+            }
+        }
+    }
 
-      // Carrega os dados das pastas ao carregar a página
-      window.onload = function() { // aqui ele carrega as coisas quando carregar a página
-          for (const folderName in folders) {
-              const tab = document.createElement('button');
-              tab.classList.add('tab');
-              tab.textContent = folderName;
-              tab.onclick = () => changeList(folderName);
-              document.getElementById('tabs').appendChild(tab);
-          }
-          if (Object.keys(folders).length > 0) {
-              changeList(Object.keys(folders)[0]);
-          }
-      };
-  </script>
+    function saveData() {
+        localStorage.setItem('folders', JSON.stringify(folders));
+    }
+
+    window.onload = function() {
+        if (folders['taskList'] === undefined) {
+            folders['taskList'] = [];
+            localStorage.setItem('folders', JSON.stringify(folders));
+        }
+
+        const tabsContainer = document.getElementById('tabs');
+        tabsContainer.innerHTML = '';
+
+        for (const folderName in folders) {
+            if (folderName !== 'taskList') {
+                const folderContainer = document.createElement('div');
+                folderContainer.classList.add('folder-container');
+
+                const tab = document.createElement('button');
+                tab.classList.add('tab');
+                tab.textContent = folderName;
+                tab.onclick = () => changeList(folderName);
+                folderContainer.appendChild(tab);
+
+                const deleteFolderButton = document.createElement('button');
+                deleteFolderButton.classList.add('delete-folder-button');
+                deleteFolderButton.innerHTML = '&#128465;';
+                deleteFolderButton.onclick = (event) => {
+                    event.stopPropagation();
+                    deleteFolder(folderName);
+                };
+                folderContainer.appendChild(deleteFolderButton);
+
+                tabsContainer.appendChild(folderContainer);
+            }
+        }
+
+        if (Object.keys(folders).length > 0 && folders['taskList'].length === 0) {
+            changeList(Object.keys(folders)[0]);
+        }
+    };
+
+    function deleteAll() {
+        if (confirm('Deseja deletar todas as pastas e listas?')) {
+            folders = { taskList: [] };
+            localStorage.setItem('folders', JSON.stringify(folders));
+            window.onload();
+            updateFolderList();
+        }
+    }
+</script>
 </body>
 </html>
